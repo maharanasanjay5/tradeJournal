@@ -230,44 +230,52 @@
     </div>
 
     <script>
-        document.getElementById('tradeForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Collect form data
-            const formData = {};
-            const formElements = this.elements;
-            for (let i = 0; i < formElements.length; i++) {
-                const element = formElements[i];
-                if (element.name) {
-                    formData[element.name] = element.value;
-                }
+    document.getElementById('tradeForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const statusElement = document.getElementById('statusMessage');
+    statusElement.className = 'status-message';
+    statusElement.textContent = 'Processing...';
+    
+        try {
+        const formData = {};
+        const formElements = this.elements;
+        for (let i = 0; i < formElements.length; i++) {
+            const element = formElements[i];
+            if (element.name) {
+                formData[element.name] = element.value;
             }
-            
-            // Send data to server
-            fetch('/api/trades', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                const statusElement = document.getElementById('statusMessage');
-                if (data.success) {
-                    statusElement.textContent = 'Trade saved successfully!';
-                    statusElement.className = 'status-message success';
-                    document.getElementById('tradeForm').reset();
-                } else {
-                    statusElement.textContent = 'Error: ' + (data.message || 'Failed to save trade');
-                    statusElement.className = 'status-message error';
-                }
-            })
-            .catch(error => {
-                const statusElement = document.getElementById('statusMessage');
-                statusElement.textContent = 'Error: ' + error.message;
-                statusElement.className = 'status-message error';
-            });
+        }
+        
+        const response = await fetch('https://localhost:5001/api/trades', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            throw new Error(`Server returned unexpected content: ${text.substring(0, 100)}...`);
+        }
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to save trade');
+        }
+
+        statusElement.textContent = 'Trade saved successfully!';
+        statusElement.className = 'status-message success';
+        document.getElementById('tradeForm').reset();
+        } catch (error) {
+        console.error('Error:', error);
+        statusElement.textContent = `Error: ${error.message}`;
+        statusElement.className = 'status-message error';
+        }
         });
     </script>
 </body>
